@@ -140,3 +140,42 @@ test("the latest answer boundary survives subsequent internal tool calls until t
 	assert.deepEqual(wire.map(message => message.role), ["assistant", "toolResult", "user", "assistant", "toolResult"]);
 	assertSubmissionContent(wire[2]!, result);
 });
+
+test("Pi openai-codex question answers start the same learner turn without changing saved records", () => {
+	for (const tool of QUESTION_TOOLS) {
+		const call = { ...pose(tool), provider: "openai-codex", api: "openai-codex-responses" } as LhMessage;
+		const record = [newUserMessage("Assess my understanding"), call, answer(tool)];
+		const saved = structuredClone(record);
+		const wire = toLlmMessages(record);
+		assert.deepEqual(wire.map(message => message.role), ["user", "assistant", "toolResult", "user"], tool);
+		assertSubmissionContent(wire[3]!, record[2]!);
+		assert.deepEqual(record, saved);
+		assert.deepEqual(toLlmMessages(record), wire);
+	}
+});
+
+test("Pi Codex answer turns preserve images and an explicit request to pause", () => {
+	const image: ImageContent = { type: "image", mimeType: "image/png", data: "iVBORw0KGgo=" };
+	const call = { ...pose("recall"), provider: "openai-codex" } as LhMessage;
+	const result = answer("recall", { text: "Please pause the lesson", images: { answer: [image] } });
+	const submission = toLlmMessages([call, result]).at(-1)!;
+	assert.equal(submission.role, "user");
+	assertSubmissionContent(submission, result);
+	assert(Array.isArray(submission.content));
+	assert.equal(submission.content.filter(block => block.type === "image").length, 1);
+	assert.match(JSON.stringify(submission.content), /Please pause the lesson/);
+	assert.doesNotMatch(JSON.stringify(submission.content), /must continue|next question/i);
+});
+
+test("Pi Codex keeps its latest answer boundary through internal tools and retires it on newer learner input", () => {
+	const call = { ...pose("probe"), provider: "openai-codex" } as LhMessage;
+	const result = answer("probe");
+	const internalCall = { ...pose("read", "read-call"), provider: "openai-codex" } as LhMessage;
+	const internalResult: LhMessage = { id: "read-result", role: "toolResult", toolCallId: "read-call", toolName: "read", content: [{ type: "text", text: "Reference material" }], isError: false, timestamp: 3 };
+	const record = [call, result, internalCall, internalResult];
+	const wire = toLlmMessages(record);
+	assert.deepEqual(wire.map(message => message.role), ["assistant", "toolResult", "user", "assistant", "toolResult"]);
+	assertSubmissionContent(wire[2]!, result);
+	assert.deepEqual(toLlmMessages([...record, newUserMessage("Pause here")]).map(message => message.role),
+		["assistant", "toolResult", "assistant", "toolResult", "user"]);
+});

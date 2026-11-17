@@ -632,7 +632,7 @@ function expandUserCitations(message: UserMessage): UserMessage {
 	return { ...message, content: message.content.map((block) => (block.type === "text" ? { ...block, text: expandCitationsForModel(block.text) } : block)) };
 }
 
-/** A submitted ChatGPT question answer is a new learner turn, although its canonical
+/** A submitted ChatGPT/Pi Codex question answer is a new learner turn, although its canonical
  * record entry also fulfils an earlier tool call. Tool-result-only replay can
  * make a provider merely close that earlier turn instead of advancing the
  * probe. Preserve the result and expose the actual submission as a transient,
@@ -647,10 +647,10 @@ function learnerAnswerTurn(message: AgentMessage, history: readonly AgentMessage
 		block => block.type === "toolCall" && block.id === message.toolCallId && block.name === message.toolName,
 	));
 	if (!owner || owner.role !== "assistant" || owner.stopReason === "error" || owner.stopReason === "aborted") return undefined;
-	// This boundary fixes the reproduced ChatGPT subscription continuation.
+	// ChatGPT and Pi's Codex connection use the same answer-turn boundary.
 	// Other transports keep their existing semantics; notably Claude Code's
 	// held MCP request requires the trailing native tool result for reuse.
-	if (owner.provider !== "chatgpt") return undefined;
+	if (owner.provider !== "chatgpt" && owner.provider !== "openai-codex") return undefined;
 	const prefix = "Learner answer submitted through the question form:\n";
 	const [first, ...rest] = message.content;
 	return {
@@ -672,7 +672,7 @@ function learnerAnswerTurn(message: AgentMessage, history: readonly AgentMessage
  * - markers flatten to a user message carrying their content (the
  *   canonical text single-sourced in core/contracts); plan blocks are
  *   UI-only and filtered.
- * - the most recent learner event, when it is a genuine ChatGPT builtin
+ * - the most recent learner event, when it is a genuine ChatGPT/Pi Codex builtin
  *   question answer, also projects a transient user-turn boundary carrying
  *   that same answer; historical answer turns and saved records stay unchanged.
  * - dangling calls from successfully generated assistant messages (for
