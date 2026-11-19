@@ -26,6 +26,10 @@
  */
 import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { SERVER_EVENT_TYPES, type ServerEventType, type ServerEvents } from "@/src/core";
+import { installRandomUUID } from "@/lib/browser-crypto";
+
+// This outermost client provider loads before the app and plugin controls mount.
+if (typeof window !== "undefined" && window.crypto) installRandomUUID(window.crypto);
 
 /** The minimal source surface the provider consumes — EventSource behind
  *  this in production, fakes in tests. */
