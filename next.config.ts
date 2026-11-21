@@ -98,7 +98,7 @@ const nextConfig: NextConfig = {
 			// Public native OAuth factories load these flows through variable imports.
 			// Electron main uses the same standalone SDK; the offline runtime gate
 			// evaluates their real toAuth paths without login or provider requests.
-			"node_modules/@earendil-works/pi-ai/dist/auth/oauth/{load,github-copilot,xai,device-code}.js",
+			"node_modules/@earendil-works/pi-ai/dist/auth/oauth/{load,github-copilot,xai,device-code,trusted-url}.js",
 			"node_modules/@earendil-works/pi-ai/dist/utils/sleep.js",
 			// The global Pi setup derives request auth from any of Pi's logins
 			// (src/server/pi-global.ts), so it needs every flow behind that
