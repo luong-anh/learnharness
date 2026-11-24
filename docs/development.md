@@ -30,7 +30,7 @@ npm run build          # stage core plugins, then Next production/standalone bui
 npm start              # serve the production build with Next
 ```
 
-`npm run desktop:dist` is the local **signed macOS** packaging path, not a portable unsigned shortcut. Prerequisites and Windows/Linux instructions are in [Desktop builds and releases](desktop-release.md).
+`npm run desktop:dist` is the local **signed Apple Silicon macOS** packaging path. On a native Intel Mac, use `npm run desktop:dist:mac:x64:unsigned` for a local unsigned package; both commands stage current core plugins through `npm run build`. Prerequisites and Windows/Linux instructions are in [Desktop builds and releases](desktop-release.md).
 
 ### Other devices on your network
 

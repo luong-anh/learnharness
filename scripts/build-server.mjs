@@ -8,7 +8,8 @@
  * the exclusion that keeps the repo's real data/ OUT of the bundle
  * (see next.config.ts outputFileTracingExcludes). It also removes exact
  * build-only paths the tracer sweeps in: plugin authoring projects,
- * old installers and the development Electron runtime. Broad trace exclusions break externals.
+ * old installers, tooling, build configuration and the development Electron runtime.
+ * Runtime plugin assets are reassembled after curation. Broad trace exclusions break externals.
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -63,6 +64,21 @@ for (const secret of ["auth.json", ...subscriptionSecrets, ".env", ".env.local"]
 	}
 }
 
+// 2c) Remove only known standalone-root build inputs, never dependency assets.
+// Reassemble runtime plugin files below after removing stale checkout tooling.
+for (const extra of [
+	"plugins", "dist", path.join("node_modules", "electron"),
+	"tests", "scripts", "build", "INTEL-MAC-PLAN.md",
+	"electron-builder.yml", "electron-builder.mac-x64.yml", "package-lock.json",
+	"tsconfig.json", "eslint.config.mjs", "postcss.config.mjs", "next.config.ts", "AGENTS.md",
+]) {
+	const target = path.join(STANDALONE, extra);
+	if (exists(target)) {
+		fs.rmSync(target, { recursive: true, force: true });
+		console.log(`[build-server] removed build-only payload: ${extra}`);
+	}
+}
+
 // Assemble plugin assets only after refusing unsafe traced data/credentials.
 // Runtime native plugin loader is deliberately outside Next's module graph.
 // Copy it explicitly: external plugin entries must be loaded by native Node,
@@ -82,22 +98,6 @@ try {
 // Reassemble from current source, never reuse a potentially stale dev download.
 // Ship the complete portable skill plus its static ZIP; no application toolchain.
 buildPluginAuthoring({ root: ROOT, standalone: true });
-
-// 2c) Payload curation (2026-10-11): the trace sweep can copy repo-root
-// plugins/ (authoring sources/tests), dist/ (previous installers), and the development Electron
-// runtime (the demo helper's dev-only require). Neither belongs in the
-// server: packaged helpers use process.execPath, the app's own binary.
-// Remove ONLY these standalone-root paths AFTER tracing — excluding a
-// generic dist/** earlier broke pi-ai / pi-agent-core's runtime dist/.
-// Never touch ROOT/dist or ROOT/node_modules/electron (the running app
-// and the build runtime); native canvas/resvg packages stay untouched.
-for (const extra of ["plugins", "dist", path.join("node_modules", "electron")]) {
-	const target = path.join(STANDALONE, extra);
-	if (exists(target)) {
-		fs.rmSync(target, { recursive: true, force: true });
-		console.log(`[build-server] removed build-only payload: ${extra}`);
-	}
-}
 
 // 3) Sanity: the runtime-read prompt assets must be present (the teacher
 //    agent reads them from disk at request time).
